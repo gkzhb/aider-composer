@@ -198,7 +198,7 @@ export default class AiderChatService {
               this.outputChannel.info(`aider-chat: ${line}`);
               if (
                 !isRunning &&
-                line.includes(`Running on http://127.0.0.1:${randomPort}`)
+                line.includes(`Listening at: http://127.0.0.1:${randomPort}`)
               ) {
                 isRunning = true;
                 this.port = randomPort;
