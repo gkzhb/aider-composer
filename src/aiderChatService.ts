@@ -135,14 +135,15 @@ export default class AiderChatService {
         return new Promise<void>((resolve, reject) => {
           const aiderChatProcess = spawn(
             pythonPathFile,
+            // eg. "python -m gunicorn --chdir /path/to/this/repo --bind localhost:5000 server.main:app"
             [
               '-m',
-              'flask',
-              '-A',
-              path.join(this.context.extensionUri.fsPath, 'server/main.py'),
-              'run',
-              '--port',
-              randomPort.toString(),
+              'gunicorn',
+              '--chdir',
+              this.context.extensionUri.fsPath,
+              '--bind',
+              `localhost:${randomPort.toString()}`,
+              'server.main:app',
             ],
             {
               cwd: folderPath,
