@@ -44,7 +44,7 @@ This extension uses the Python packages `aider-chat`, `flask` and `gunicorn` to 
 - Install Python (download from [python.org](https://www.python.org/) or use other methods). For Mac or Python venv installations, please refer to [this issue](https://github.com/lee88688/aider-composer/issues/2)
 - Install the required packages using: `pip install aider-chat flask gunicorn`
 
-Or use `uv` to install python and then install the `aider` cli tools with other required dependencies:
+Or you can use [`uv`](https://docs.astral.sh/uv/) to install python and then install the `aider` cli tools with other required dependencies:
 ```bash
 uv tool install --with flask --with gunicorn aider-chat
 ```
