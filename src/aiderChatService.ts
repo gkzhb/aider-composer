@@ -143,9 +143,6 @@ export default class AiderChatService {
               this.context.extensionUri.fsPath,
               '--bind',
               `localhost:${randomPort.toString()}`,
-              // set longer timeout to avoid /api/chat timeout
-              '--timeout',
-              '600', // 600s
               'server.main:app',
             ],
             {
