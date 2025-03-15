@@ -39,17 +39,10 @@ Due to certain limitations and other issues, this extension may not implement al
 
 ## Requirements
 
-This extension uses the Python packages `aider-chat`, `flask` and `gunicorn` to provide background services. You need to:
+This extension uses the Python packages `aider-chat` and `flask` to provide background services. You need to:
 
 - Install Python (download from [python.org](https://www.python.org/) or use other methods). For Mac or Python venv installations, please refer to [this issue](https://github.com/lee88688/aider-composer/issues/2)
-- Install the required packages using: `pip install aider-chat flask gunicorn`
-
-Or you can use [`uv`](https://docs.astral.sh/uv/) to install python and then install the `aider` cli tools with other required dependencies:
-```bash
-uv tool install --with flask --with gunicorn aider-chat
-```
-
-The python path is `$HOME/.local/share/uv/tools/aider-chat/bin/python` for uv tool.
+- Install the required packages using: `pip install aider-chat flask`
 
 ### Install Required Packages With Virtual Environment
 
