@@ -59,6 +59,7 @@
     "views": {
       "aider-composer-activitybar": [
         {
+          "icon": "resources/icon.svg",
           "type": "webview",
           "id": "aider-composer.SidebarProvider",
           "name": "Aider Composer",
@@ -112,16 +113,6 @@
       {
         "command": "aider-composer.Test",
         "title": "Aider Composer: Test"
-      },
-      {
-        "command": "aider-composer.AcceptAllChanges",
-        "title": "Aider Composer: Accept All Changes",
-        "icon": "$(check-all)"
-      },
-      {
-        "command": "aider-composer.RejectAllChanges",
-        "title": "Aider Composer: Reject All Changes",
-        "icon": "$(close-all)"
       },
       {
         "command": "aider-composer.GenerateCode",
