@@ -132,6 +132,11 @@
         "command": "aider-composer.InsertIntoChat",
         "title": "Aider Composer: Insert Into Chat",
         "icon": "$(arrow-right)"
+      },
+      {
+        "command": "aider-composer.RestartService",
+        "title": "Aider Composer: Restart Service",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -150,6 +155,11 @@
           "command": "aider-composer.SettingButtonClick",
           "when": "view == aider-composer.SidebarProvider",
           "group": "navigation@3"
+        },
+        {
+          "command": "aider-composer.RestartService",
+          "when": "view == aider-composer.SidebarProvider",
+          "group": "navigation@4"
         }
       ],
       "editor/title": [

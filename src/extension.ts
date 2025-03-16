@@ -71,6 +71,12 @@ export function activate(context: vscode.ExtensionContext) {
     webviewProvider,
   );
 
+  // restart service command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('aider-composer.RestartService', () => {
+      aiderChatService.restart();
+    }),
+  );
   // add button click
   context.subscriptions.push(
     vscode.commands.registerCommand('aider-composer.AddButtonClick', () => {

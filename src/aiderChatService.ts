@@ -3,13 +3,15 @@ import * as fsPromise from 'node:fs/promises';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
 import * as vscode from 'vscode';
-import { isProductionMode } from './utils/isProductionMode';
+import { isE2EDevMode, isProductionMode } from './utils/isProductionMode';
 import { EventSourceParserStream } from 'eventsource-parser/stream';
 import { createEventSource } from 'eventsource-client';
 
 export default class AiderChatService {
   private aiderChatProcess: ChildProcess | undefined;
   private isDev = false;
+  /** whether to start python server from extension */
+  private isE2EDev = false;
 
   port: number = 0;
 
@@ -21,6 +23,7 @@ export default class AiderChatService {
     private outputChannel: vscode.LogOutputChannel,
   ) {
     this.isDev = !isProductionMode(context);
+    this.isE2EDev = isE2EDevMode(context);
   }
 
   private async pythonFilePathFinder(pythonPath: string) {
@@ -56,7 +59,7 @@ export default class AiderChatService {
   async start() {
     this.outputChannel.info('Starting aider-chat service...');
 
-    if (!isProductionMode(this.context)) {
+    if (!isProductionMode(this.context) && !this.isE2EDev) {
       this.port = 5000;
       this.onStarted();
       return;
@@ -202,7 +205,9 @@ export default class AiderChatService {
               this.outputChannel.info(`aider-chat: ${line}`);
               if (
                 !isRunning &&
-                line.includes(`Uvicorn running on http://127.0.0.1:${randomPort}`)
+                line.includes(
+                  `Uvicorn running on http://127.0.0.1:${randomPort}`,
+                )
               ) {
                 isRunning = true;
                 this.port = randomPort;
@@ -227,10 +232,19 @@ export default class AiderChatService {
     );
   }
 
-  restart() {
+  async restart() {
     this.outputChannel.info('Restarting aider-chat service...');
-    this.stop();
-    this.start();
+    try {
+      this.stop();
+      await this.start();
+      this.outputChannel.info('aider-chat service restarted successfully');
+      vscode.window.showInformationMessage(
+        'aider-chat service restarted successfully',
+      );
+    } catch (error) {
+      this.outputChannel.error('Failed to restart aider-chat service:', error);
+      vscode.window.showErrorMessage('Failed to restart aider-chat service');
+    }
   }
 
   stop() {
