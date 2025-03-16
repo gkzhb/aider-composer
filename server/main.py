@@ -1,5 +1,8 @@
 from typing import Dict, Iterator, List, Optional, Literal, Any
-from flask import Flask, jsonify, request, Response
+from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
+from sse_starlette.sse import EventSourceResponse
 from aider.models import Model
 from aider.coders import Coder, ArchitectCoder
 from aider.io import InputOutput
@@ -321,64 +324,67 @@ class ChatSessionManager:
     def confirm_ask_reply(self):
         self.confirm_ask_event.set()
 
-class CORS:
-    def __init__(self, app):
-        self.app = app
-        self.init_app(app)
+app = FastAPI()
 
-    def init_app(self, app):
-        app.after_request(self.add_cors_headers)
-
-    def add_cors_headers(self, response):
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-        return response
-
-app = Flask(__name__)
-CORS(app)
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 manager = ChatSessionManager()
 
-@app.route('/api/chat', methods=['POST', 'OPTIONS'])
-def sse():
-    if request.method == 'OPTIONS':
-        response = Response()
-        return response
-
-    data = request.json
+@app.post('/api/chat')
+async def sse(request: Request):
+    data = await request.json()
     data['reference_list'] = [ChatSessionReference(**item) for item in data['reference_list']]
 
     chat_session_data = ChatSessionData(**data)
 
-    def generate():
-        for msg in manager.chat(chat_session_data):
-            if msg.data:
-                yield f"event: {msg.event}\n"
-                yield f"data: {json.dumps(msg.data)}\n\n"
-            else:
-                yield f"event: {msg.event}\n"
-                yield f"data:\n\n"
+    async def event_generator():
+        try:
+            for msg in manager.chat(chat_session_data):
+                # If client closed the connection
+                if await request.is_disconnected():
+                    # TODO disconnect LLM chat request
+                    break
+                if msg.data:
+                    yield {
+                        "event": msg.event,
+                        "data": json.dumps(msg.data)
+                    }
+                else:
+                    yield {
+                        "event": msg.event,
+                        "data": ""
+                    }
+        except Exception as e:
+            yield {
+                "event": "error",
+                "data": json.dumps({"error": str(e)})
+            }
 
-    response = Response(generate(), mimetype='text/event-stream')
-    return response
+    return EventSourceResponse(event_generator())
 
-@app.route('/api/chat', methods=['DELETE'])
-def clear():
+@app.delete('/api/chat')
+async def clear():
     manager.coder.done_messages = []
     manager.coder.cur_messages = []
-    return jsonify({})
+    return JSONResponse(content={})
 
-@app.route('/api/chat/session', methods=['PUT'])
-def set_history():
-    data = request.json
+@app.put('/api/chat/session')
+async def set_history(request: Request):
+    data = await request.json()
     manager.coder.done_messages = data
     manager.coder.cur_messages = []
-    return jsonify({})
+    return JSONResponse(content={})
 
-@app.route('/api/chat/setting', methods=['POST'])
-def update_setting():
-    data = request.json
+@app.post('/api/chat/setting')
+async def update_setting(request: Request):
+    data = await request.json()
     # Create ModelSetting instances for both main and editor models
     data['main_model'] = ModelSetting(**data['main_model'])
     if 'editor_model' in data and data['editor_model']:
@@ -386,19 +392,20 @@ def update_setting():
     setting = ChatSetting(**data)
 
     manager.update_model(setting)
-    return jsonify({})
+    return JSONResponse(content={})
 
-@app.route('/api/chat/confirm/ask', methods=['POST'])
-def confirm_ask():
+@app.post('/api/chat/confirm/ask')
+async def confirm_ask():
     manager.confirm_ask()
-    return jsonify(manager.confirm_ask_result)
+    return JSONResponse(content=manager.confirm_ask_result)
 
-@app.route('/api/chat/confirm/reply', methods=['POST'])
-def confirm_reply():
-    data = request.json
+@app.post('/api/chat/confirm/reply')
+async def confirm_reply(request: Request):
+    data = await request.json()
     manager.confirm_ask_result = data
     manager.confirm_ask_reply()
-    return jsonify({})
+    return JSONResponse(content={})
 
 if __name__ == '__main__':
-    app.run()
+    import uvicorn
+    uvicorn.run(app, port=5000, timeout_keep_alive=600)
