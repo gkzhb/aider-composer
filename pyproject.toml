@@ -1,0 +1,11 @@
+[project]
+name = "aider-composer"
+version = "0.1.0"
+description = "aider composer server"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aider-chat>=0.77.0",
+    "fastapi[standard]>=0.115.11",
+    "sse-starlette>=2.2.1",
+]
