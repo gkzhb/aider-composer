@@ -1,13 +1,28 @@
 from typing import Dict, Iterator, List, Optional, Literal, Any
-from fastapi import FastAPI, Request, Response, HTTPException
+import sys
+import os
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Remove current working directory from Python path to avoid module import conflicts
+# This prevents local files from shadowing installed packages with the same name
+cwd = os.getcwd()
+if cwd in sys.path:
+    sys.path.remove(cwd)
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 from aider.models import Model
 from aider.coders import Coder, ArchitectCoder
 from aider.io import InputOutput
 from dataclasses import dataclass, asdict
-import os
 import json
 from threading import Event, Thread
 from queue import Queue
