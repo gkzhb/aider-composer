@@ -69,68 +69,68 @@
     "commands": [
       {
         "command": "aider-composer.AddButtonClick",
-        "title": "New",
+        "title": "Aider Composer: New Chat",
         "icon": "$(add)"
       },
       {
         "command": "aider-composer.AcceptAllChanges",
-        "title": "Accept All Changes",
+        "title": "Aider Composer: Accept All Changes",
         "icon": "$(check-all)",
         "enablement": "aider-composer.hasChanges"
       },
       {
         "command": "aider-composer.RejectAllChanges",
-        "title": "Reject All Changes",
+        "title": "Aider Composer: Reject All Changes",
         "icon": "$(close-all)",
         "enablement": "aider-composer.hasChanges"
       },
       {
         "command": "aider-composer.SettingButtonClick",
-        "title": "Settings",
+        "title": "Aider Composer: Settings",
         "icon": "$(settings-gear)"
       },
       {
         "command": "aider-composer.ConfirmModify",
-        "title": "Confirm Modify",
+        "title": "Aider Composer: Confirm Modify",
         "icon": "$(check)"
       },
       {
         "command": "aider-composer.HistoryButtonClick",
-        "title": "History",
+        "title": "Aider Composer: History",
         "icon": "$(history)"
       },
       {
         "command": "aider-composer.AcceptChange",
-        "title": "Accept Change",
+        "title": "Aider Composer: Accept Change",
         "icon": "$(check)"
       },
       {
         "command": "aider-composer.RejectChange",
-        "title": "Reject Change",
+        "title": "Aider Composer: Reject Change",
         "icon": "$(x)"
       },
       {
         "command": "aider-composer.Test",
-        "title": "aider composer test"
+        "title": "Aider Composer: Test"
       },
       {
         "command": "aider-composer.AcceptAllChanges",
-        "title": "Accept All Changes",
+        "title": "Aider Composer: Accept All Changes",
         "icon": "$(check-all)"
       },
       {
         "command": "aider-composer.RejectAllChanges",
-        "title": "Reject All Changes",
+        "title": "Aider Composer: Reject All Changes",
         "icon": "$(close-all)"
       },
       {
         "command": "aider-composer.GenerateCode",
-        "title": "Generate Code",
+        "title": "Aider Composer: Generate Code",
         "icon": "$(code)"
       },
       {
         "command": "aider-composer.InsertIntoChat",
-        "title": "Insert Into Chat",
+        "title": "Aider Composer: Insert Into Chat",
         "icon": "$(arrow-right)"
       }
     ],
