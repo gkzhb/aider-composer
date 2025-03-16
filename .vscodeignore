@@ -14,4 +14,5 @@ ui/**
 .idea/**
 .aider*
 .aider*/**
+.venv
 node_modules

@@ -39,10 +39,18 @@ Due to certain limitations and other issues, this extension may not implement al
 
 ## Requirements
 
-This extension uses the Python packages `aider-chat` and `flask` to provide background services. You need to:
+This extension uses the Python packages `aider-chat`, `fastapi` and `sse-starlette` to provide background services. You need to:
 
 - Install Python (download from [python.org](https://www.python.org/) or use other methods). For Mac or Python venv installations, please refer to [this issue](https://github.com/lee88688/aider-composer/issues/2)
-- Install the required packages using: `pip install aider-chat flask`
+- Install the required packages using: `pip install aider-chat "fastapi[standard]" sse-starlette`
+
+Or use [uv](https://docs.astral.sh/uv/) to install python, aider-chat and etc:
+
+```bash
+uv tool install --with "fastapi[standard]" --with sse-starlette aider-chat
+```
+
+The python path is `$HOME/.local/share/uv/tools/aider-chat/bin/python` for uv tool.
 
 ### Install Required Packages With Virtual Environment
 
@@ -51,6 +59,7 @@ It is recommended to install Python from [python.org](https://www.python.org/) i
 When you install Python, it is recommended to create a virtual environment and install the packages in the virtual environment. You can use the following command to create a virtual environment:
 
 #### In Linux Or Mac
+
 ```bash
 # create virtual environment, .venv is the name of the virtual environment, you can change it to any name you want
 python -m venv .venv
@@ -74,11 +83,12 @@ Virtual environment is recommended because it can avoid conflicts with the syste
 
 ### Install Packages
 
-After you **activate** the virtual environment, you need to install `aider-chat` and `flask` packages in the virtual environment. You can use the following command to install the packages:
+After you **activate** the virtual environment, you need to install `aider-chat`, `fastapi[standard]` and `sse-starlette` packages in the virtual environment. You can use the following command to install the packages:
 
 ```bash
-pip install aider-chat flask
+pip install aider-chat "fastapi[standard]" sse-starlette
 ```
+
 
 After you install the packages, you can set the `aider-composer.pythonPath` to the directory containing the Python executable in the VSCode settings.
 
@@ -142,6 +152,7 @@ In this extension, file reference is above the chat input area, you can click th
 ### Code Review
 
 When Aider modifies code, it will show you the code. You have two review options:
+
 - Use diff editor (default)
 - Use inline diff preview
 

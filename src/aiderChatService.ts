@@ -134,15 +134,20 @@ export default class AiderChatService {
 
         return new Promise<void>((resolve, reject) => {
           const aiderChatProcess = spawn(
+            // python -m uvicorn --app-dir /path/to/extension --timeout-keep-alive 600 --port 5000 --log-level debug server.main:app
             pythonPathFile,
             [
               '-m',
-              'flask',
-              '-A',
-              path.join(this.context.extensionUri.fsPath, 'server/main.py'),
-              'run',
+              'uvicorn',
+              '--app-dir',
+              this.context.extensionUri.fsPath,
+              '--timeout-keep-alive',
+              '600',
               '--port',
               randomPort.toString(),
+              '--log-level',
+              'debug',
+              'server.main:app',
             ],
             {
               cwd: folderPath,
@@ -197,7 +202,7 @@ export default class AiderChatService {
               this.outputChannel.info(`aider-chat: ${line}`);
               if (
                 !isRunning &&
-                line.includes(`Running on http://127.0.0.1:${randomPort}`)
+                line.includes(`Uvicorn running on http://127.0.0.1:${randomPort}`)
               ) {
                 isRunning = true;
                 this.port = randomPort;
