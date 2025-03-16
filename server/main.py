@@ -106,15 +106,18 @@ class CaptureIO(InputOutput):
         super().__init__(*args, **kwargs)
 
     def tool_output(self, msg="", log_only=False, bold=False):
+        logger.info(f'aider tool: {msg}')
         if not log_only:
             self.lines.append(msg)
         super().tool_output(msg, log_only=log_only, bold=bold)
 
     def tool_error(self, msg):
+        logger.error(f'aider tool: {msg}')
         self.error_lines.append(msg)
         super().tool_error(msg)
 
     def tool_warning(self, msg):
+        logger.warning(f'aider tool: {msg}')
         self.lines.append(msg)
         super().tool_warning(msg)
 
@@ -129,11 +132,11 @@ class CaptureIO(InputOutput):
         return lines
 
     def write_text(self, filename, content):
-        print(f'write {filename}')
+        logger.info(f'write {filename}')
         self.write_files[filename] = content
     
     def read_text(self, filename):
-        print(f'read {filename}')
+        logger.info(f'read {filename}')
         if filename in self.write_files:
             return self.write_files[filename]
         return super().read_text(filename)
@@ -152,7 +155,7 @@ class CaptureIO(InputOutput):
         group=None,
         allow_never=False,
     ):
-        print('confirm_ask', question, subject, group)
+        logger.info(f'confirm_ask: {question}, subject: {subject}, group: {group}')
         # create new file
         if 'Create new file' in question:
             return True
