@@ -18,6 +18,7 @@ import {
   apiChat,
   apiClearChat,
   apiSaveSession,
+  apiStopChat,
   cancelGenerateCode,
   logToOutput,
   showErrorMessage,
@@ -377,9 +378,9 @@ export const useChatStore = create(
                 ...state,
                 current: state.current
                   ? {
-                      ...state.current,
-                      text: (state.current?.text ?? '') + chunkMessage.chunk,
-                    }
+                    ...state.current,
+                    text: (state.current?.text ?? '') + chunkMessage.chunk,
+                  }
                   : state.current,
               }));
               break;
@@ -391,9 +392,9 @@ export const useChatStore = create(
                 ...state,
                 current: state.current
                   ? {
-                      ...state.current,
-                      usage: usage.usage,
-                    }
+                    ...state.current,
+                    usage: usage.usage,
+                  }
                   : state.current,
               }));
               break;
@@ -479,7 +480,13 @@ export const useChatStore = create(
 
             case 'error': {
               const errorData = chunk.data as { error: string };
+              const err = errorData.error;
+              console.error('request error', chunk, typeof errorData.error, typeof errorData.error === 'object' ? { ...(errorData.error as any) } : errorData.error);
               logToOutput('error', `server error: ${errorData.error}`);
+              if (typeof err === 'string' && err.startsWith('AbortError')) {
+                // abort request
+                break;
+              }
               showErrorMessage(errorData.error);
               break;
             }
@@ -604,8 +611,8 @@ export const useChatStore = create(
         // };
       },
       cancelChat() {
-        get().currentChatRequest?.close();
-        set({ currentChatRequest: undefined });
+        apiStopChat();
+        set({ current: undefined });
       },
     }),
   ),

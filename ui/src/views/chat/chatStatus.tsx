@@ -119,7 +119,7 @@ export function ChatStatus() {
 
   let status: ReactNode;
   // eslint-disable-next-line no-constant-condition
-  if (isGenerating && false) {
+  if (isGenerating) {
     status = (
       <div className={statusLine}>
         <RefreshCw

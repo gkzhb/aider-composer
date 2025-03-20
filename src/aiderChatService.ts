@@ -12,11 +12,16 @@ export default class AiderChatService {
   private isDev = false;
   /** whether to start python server from extension */
   private isE2EDev = false;
+  private activeChatController: AbortController | null = null;
+
+  get isChatActive() {
+    return this.activeChatController !== null;
+  }
 
   port: number = 0;
 
-  onStarted: () => void = () => {};
-  onError: (error: Error) => void = () => {};
+  onStarted: () => void = () => { };
+  onError: (error: Error) => void = () => { };
 
   constructor(
     private context: vscode.ExtensionContext,
@@ -249,8 +254,17 @@ export default class AiderChatService {
 
   stop() {
     this.outputChannel.info('Stopping aider-chat service...');
+    this.stopChat();
     this.aiderChatProcess?.kill();
     this.aiderChatProcess = undefined;
+  }
+
+  stopChat() {
+    if (this.activeChatController) {
+      this.outputChannel.info('Stopping active chat request...');
+      this.activeChatController.abort();
+      this.activeChatController = null;
+    }
   }
 
   get serviceUrl() {
@@ -261,33 +275,40 @@ export default class AiderChatService {
     payload: unknown,
     chunkCallback: (data: { name?: string; data: unknown }) => void,
   ) {
-    const res = await fetch(`${this.serviceUrl}/api/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const stream = res.body
-      ?.pipeThrough(new TextDecoderStream())
-      .pipeThrough(new EventSourceParserStream());
-
-    if (!stream) {
-      return;
+    if (this.isChatActive) {
+      this.stopChat();
     }
 
-    // eventsource-client has reconnect logic and it can't be cancelled
-    // const stream = createEventSource({
-    //   url: `${this.serviceUrl}/api/chat`,
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify(payload),
-    // });
+    this.activeChatController = new AbortController();
 
     try {
+      const res = await fetch(`${this.serviceUrl}/api/chat`, {
+        signal: this.activeChatController.signal,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const stream = res.body
+        ?.pipeThrough(new TextDecoderStream())
+        .pipeThrough(new EventSourceParserStream());
+
+      if (!stream) {
+        return;
+      }
+
+      // eventsource-client has reconnect logic and it can't be cancelled
+      // const stream = createEventSource({
+      //   url: `${this.serviceUrl}/api/chat`,
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify(payload),
+      // });
+
       for await (const event of stream) {
         if (this.isDev) {
           console.log('chunk', event);
@@ -311,8 +332,9 @@ export default class AiderChatService {
           error: `${e}`,
         },
       });
+    } finally {
+      this.activeChatController = null;
     }
-    // stream.close();
   }
 
   async apiClearChat() {
