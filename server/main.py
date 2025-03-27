@@ -1,96 +1,46 @@
-from typing import Dict, Iterator, List, Optional, Literal, Any
-import sys
+# Standard library imports
+import asyncio
+import json
 import os
-import logging
+import sys
+from dataclasses import asdict, dataclass
+from queue import Queue
+from threading import Event, Thread
+from typing import Any, Dict, Iterator, List, Literal, Optional
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Add project root to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
-# Remove current working directory from Python path to avoid module import conflicts
-# This prevents local files from shadowing installed packages with the same name
-cwd = os.getcwd()
-if cwd in sys.path:
-    sys.path.remove(cwd)
+if __name__ != '__main__':
+    # Remove current working directory from Python path to avoid module import conflicts
+    # This prevents local files from shadowing installed packages with the same name
+    cwd = os.getcwd()
+    if cwd in sys.path:
+        sys.path.remove(cwd)
 
+
+# Third-party imports
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
-from aider.models import Model
-from aider.coders import Coder, ArchitectCoder
 from aider.io import InputOutput
-from dataclasses import dataclass, asdict
-import json
-from threading import Event, Thread
-from queue import Queue
+from aider.models import Model
 
-@dataclass
-class ChatChunkData:
-    # event: data, usage, write, end, error, reflected, log, editor
-    # data: yield chunk message
-    # usage: yield usage report
-    # write: yield write files
-    # end: end of chat
-    # error: yield error message
-    # reflected: yield reflected message
-    # log: yield log message
-    # editor: editor start working
-    event: str
-    data: Optional[dict] = None
-
-# patch Coder
-def on_data_update(self, fn):
-    self.on_data_update = fn
-
-def emit_data_update(self, data):
-    if self.on_data_update:
-        self.on_data_update(data)
-
-Coder.on_data_update = on_data_update
-Coder.emit_data_update = emit_data_update
-
-# patch ArchitectCoder
-original_reply_completed = ArchitectCoder.reply_completed
-def reply_completed(self):
-    self.emit_data_update(ChatChunkData(event='editor-start'))
-    result = original_reply_completed(self)
-    self.emit_data_update(ChatChunkData(event='editor-end'))
-    return result
-
-
-ArchitectCoder.reply_completed = reply_completed
-
-
-@dataclass
-class ModelSetting:
-    provider: str
-    api_key: str
-    model: str
-    base_url: Optional[str] = None
-
-@dataclass
-class ChatSetting:
-    main_model: ModelSetting
-    editor_model: Optional[ModelSetting] = None
-
-provider_env_map = {
-    'deepseek': 'DEEPSEEK_API_KEY',
-    'openai': 'OPENAI_API_KEY',
-    'anthropic': 'ANTHROPIC_API_KEY',
-    'ollama': {
-        'base_url': 'OLLAMA_API_BASE',
-    },
-    'openrouter': 'OPENROUTER_API_KEY',
-    'openai_compatible': {
-        'api_key': 'OPENAI_API_KEY',
-        'base_url': 'OPENAI_API_BASE',
-    },
-    'gemini': 'GEMINI_API_KEY',
-}
-
+# Local imports
+from server.coder import ArchitectCoder, Coder
+from server.utils import (
+    ChatChunkData,
+    ChatModeType,
+    ChatSessionData,
+    ChatSessionReference,
+    ChatSetting,
+    ModelSetting,
+    logger,
+    provider_env_map,
+)
 
 class CaptureIO(InputOutput):
     lines: List[str]
@@ -163,21 +113,9 @@ class CaptureIO(InputOutput):
             return True
         return False
 
-@dataclass
-class ChatSessionReference:
-    readonly: bool
-    fs_path: str
-
-@dataclass
-class ChatSessionData:
-    chat_type: str
-    diff_format: str
-    message: str
-    reference_list: List[ChatSessionReference]
-
-ChatModeType = Literal['ask', 'code', 'architect']
-
 class ChatSessionManager:
+    """Manages chat sessions with the AI coder, handling message streaming, model updates, and file operations."""
+    
     chat_type: ChatModeType
     diff_format: str
     reference_list: List[ChatSessionReference]
@@ -185,8 +123,12 @@ class ChatSessionManager:
     confirm_ask_result: Optional[Any] = None
 
     coder: Coder
+    is_chat_streaming: bool
 
     def __init__(self):
+        """Initialize the chat session manager with default settings and coder instance."""
+        self.stop_event = Event()
+        self.is_chat_streaming = False
         model = Model('gpt-4o')
         io = CaptureIO(
             pretty=False,
@@ -217,9 +159,15 @@ class ChatSessionManager:
         self.queue = Queue()
     
     def _update_patch_coder(self):
+        """Update the coder instance with the latest data update callback."""
         self.coder.on_data_update(lambda data: self.queue.put(data))
 
     def update_model(self, setting: ChatSetting):
+        """Update the AI model configuration with new settings.
+        
+        Args:
+            setting: ChatSetting object containing model configuration
+        """
         if self.setting != setting:
             self.setting = setting
             model = Model(setting.main_model.model)
@@ -235,6 +183,11 @@ class ChatSessionManager:
             self.coder = Coder.create(from_coder=self.coder, main_model=model)
     
     def _configure_model_env(self, setting: ModelSetting):
+        """Configure environment variables for the AI model based on provider settings.
+        
+        Args:
+            setting: ModelSetting object containing provider-specific configuration
+        """
         # update os env
         config = provider_env_map[setting.provider]
         if isinstance(config, str):
@@ -245,6 +198,8 @@ class ChatSessionManager:
                 os.environ[value] = getattr(setting, key)
     
     def update_coder(self):
+        """Update the coder instance with current chat type, diff format, and file references."""
+        self.stop_event.clear()
         self.coder = Coder.create(
             from_coder=self.coder,
             edit_format=self.diff_format if self.chat_type == 'code' else self.chat_type,
@@ -257,6 +212,14 @@ class ChatSessionManager:
         self._update_patch_coder()
 
     def chat(self, data: ChatSessionData) -> Iterator[ChatChunkData]:
+        """Handle a chat session with the AI coder, streaming responses back.
+        
+        Args:
+            data: ChatSessionData object containing chat configuration and message
+            
+        Returns:
+            Iterator yielding ChatChunkData events for streaming responses
+        """
         need_update_coder = False
         data.reference_list.sort(key=lambda x: x.fs_path)
 
@@ -283,17 +246,24 @@ class ChatSessionManager:
                 break
 
     def _coder_thread(self, message: str):
+        """Run the coder in a separate thread to process the message and generate responses.
+        
+        Args:
+            message: The user's message to process
+        """
         try:
             self.coder.init_before_message()
-            while message:
+            while message and not self.stop_event.is_set():
                 self.coder.reflected_message = None
                 for msg in self.coder.run_stream(message):
+                    if self.stop_event.is_set():
+                        break
                     data = {
                         "chunk": msg,
                     }
                     self.queue.put(ChatChunkData(event='data', data=data))
 
-                if self.coder.usage_report:
+                if not self.stop_event.is_set() and self.coder.usage_report:
                     data = { "usage": self.coder.usage_report }
                     self.queue.put(ChatChunkData(event='usage', data=data))
                 
@@ -336,10 +306,12 @@ class ChatSessionManager:
 
     
     def confirm_ask(self):
+        """Wait for user confirmation on file operations."""
         self.confirm_ask_event.clear()
         self.confirm_ask_event.wait()
 
     def confirm_ask_reply(self):
+        """Signal that user has replied to confirmation prompt."""
         self.confirm_ask_event.set()
 
 app = FastAPI()
@@ -367,7 +339,8 @@ async def sse(request: Request):
             for msg in manager.chat(chat_session_data):
                 # If client closed the connection
                 if await request.is_disconnected():
-                    # TODO disconnect LLM chat request
+                    logger.info("Client disconnected, stopping chat session")
+                    manager.coder.stop_stream()
                     break
                 if msg.data:
                     yield {
